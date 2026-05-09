@@ -44,7 +44,7 @@ st.caption(f"Catálogo JPL - {len(df):,} asteroides NEA")
 
 st.sidebar.header("Filtros")
 
-clases = ["todas"] + sorted(df["class"].dropna().unique().tolist())
+clases = ["Todas"] + sorted(df["class"].dropna().unique().tolist())
 clase_sel = st.sidebar.selectbox("Clase orbital", clases)
 
 solo_pha = st.sidebar.checkbox("Solo PHAs")
