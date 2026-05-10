@@ -71,8 +71,6 @@ st.sidebar.markdown(f"**{len(df_filtrado):,} asteroides** con estos filtros")
 
 # parte 3
 #
-
-
 tab1, tab2, tab3 = st.tabs(
     [
         "📚 Catálogo",
@@ -82,10 +80,6 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 with tab1:
-    # st.write(type(df))
-    # st.write(type(df_filtrado))
-    # st.write(type(df_filtrado[columnas]))
-
     st.subheader("Catálogo de Asteroides NEA")
     columnas = ["nombre", "H", "albedo", "diameter", "moid", "class", "pha"]
     st.dataframe(
@@ -103,3 +97,44 @@ with tab1:
         use_container_width=True,
         height=500,
     )
+
+    # tab tab2
+    #
+with tab2:
+    st.subheader("Mapa de Peligrosidad")
+    st.caption("Los más peligrosos tienen MOID pequeño y H pequeño")
+
+    df_mapa = df_filtrado[df_filtrado["moid"].notna() & df_filtrado["H"].notna()].copy()
+
+    fig_peligro = px.scatter(
+        df_mapa,
+        x="moid",
+        y="H",
+        color="H",
+        color_continuous_scale="viridis_r",
+        title="Mapa de Peligrosidad - Catálogo JPL",
+        labels={
+            "moid": "MOID - distancia mínima a la Tierra (UA)",
+            "H": "Magnitud Absoluta H",
+        },
+        opacity=0.6,
+        hover_name="nombre",
+        hover_data={"moid": ":.4f", "H": True, "class": True},
+    )
+
+    fig_peligro.add_hline(
+        y=22,
+        line_dash="dash",
+        line_color="orange",
+        annotation_text="Límite H PHA (H=22)",
+    )
+
+    fig_peligro.add_vline(
+        x=0.05,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Límite MOID PHA (0.05 UA)",
+    )
+
+    fig_peligro.update_layout(height=500)
+    st.plotly_chart(fig_peligro, use_container_width=True)
