@@ -67,3 +67,39 @@ if solo_pha:
 df_filtrado = df_filtrado[(df_filtrado["H"] >= h_min) & (df_filtrado["H"] <= h_max)]
 
 st.sidebar.markdown(f"**{len(df_filtrado):,} asteroides** con estos filtros")
+
+
+# parte 3
+#
+
+
+tab1, tab2, tab3 = st.tabs(
+    [
+        "📚 Catálogo",
+        "🗺️ Mapas",
+        "🪐 Ficha",
+    ]
+)
+
+with tab1:
+    st.write(type(df))
+    st.write(type(df_filtrado))
+    st.write(type(df_filtrado[columnas]))
+
+    st.subheader("Catálogo de Asteroides NEA")
+    columnas = ["nombre", "H", "albedo", "diameter", "moid", "class", "pha"]
+    st.dataframe(
+        df_filtrado[columnas].rename(
+            columns={
+                "nombre": "Nombre",
+                "H": "Mag. H",
+                "albedo": "Albedo",
+                "diameter": "Diametro (km)",
+                "moid": "MOID (UA)",
+                "class": "Clase",
+                "pha": "PHA",
+            }
+        ),
+        use_container_width=True,
+        height=500,
+    )
