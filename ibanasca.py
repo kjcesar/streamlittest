@@ -82,9 +82,9 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 with tab1:
-    st.write(type(df))
-    st.write(type(df_filtrado))
-    st.write(type(df_filtrado[columnas]))
+    # st.write(type(df))
+    # st.write(type(df_filtrado))
+    # st.write(type(df_filtrado[columnas]))
 
     st.subheader("Catálogo de Asteroides NEA")
     columnas = ["nombre", "H", "albedo", "diameter", "moid", "class", "pha"]
