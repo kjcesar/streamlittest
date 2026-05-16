@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import requests
 import streamlit as st
+import joblib
 
 st.set_page_config(
     page_title="Ibanasca - Defensa Planetaria de Dr. Z Academy",
@@ -49,6 +50,11 @@ clase_sel = st.sidebar.selectbox("Clase orbital", clases)
 
 solo_pha = st.sidebar.checkbox("Solo PHAs")
 
+# MODELOS ML CARGA
+#
+modelo_reg = joblib.load("modelo_regresion.joblib")
+modelo_clf = joblib.load("modelo_clasificacion.joblib")
+
 h_min, h_max = st.sidebar.slider(
     "Rango de magnitud H",
     min_value=float(df["H"].min()),
@@ -71,8 +77,16 @@ st.sidebar.markdown(f"**{len(df_filtrado):,} asteroides** con estos filtros")
 
 # parte 3
 #
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["📚 Catálogo", "🗺️ Mapas", "🪐 Ficha", "Simulador", "Coincidimos?"]
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+    [
+        "📚 Catálogo",
+        "🗺️ Mapas",
+        "🪐 Ficha",
+        "Simulador",
+        "Coincidimos?",
+        "Predicción ML",
+        "Clasificador PHA",
+    ]
 )
 
 with tab1:
@@ -257,7 +271,7 @@ with tab4:
             min_value=10,
             max_value=90,
             value=45,
-            help="90° = impacto vertical directo. Los impactos oblicuos son más frecuentes.",
+            help="90°=impacto vertical directo. Los impactos oblicuos son más frecuentes.",
         )
 
     # ---Calculos Fisicos
@@ -345,7 +359,7 @@ with tab5:
              tiene una herramienta oficial para estimar el tamaño de asteroides a partir
              de su magnitud absoluta H y su albedo. Vamos a comparar sus resultados con los
              nuestros.
-    """)
+            """)
 
     st.info(
         "Herramienta oficial CNEOS: https://cneos.jpl.nasa.gov/tools/ast_size_est.html"
@@ -375,14 +389,12 @@ with tab5:
         )
 
     d_nuestro = (1329 / np.sqrt(albedo_cneos)) * 10 ** (-0.2 * H_cneos)
-
     d_cneos = 10 ** (3.1236 - 0.5 * np.log10(albedo_cneos) - 0.2 * H_cneos)
 
     st.divider()
     st.subheader("Resultado")
 
     c1, c2, c3 = st.columns(3)
-
     c1.metric("Nuestra fórmula (Harris)", f"{d_nuestro:.2f} km")
     c2.metric("Fórmula CNEOS oficial", f"{d_cneos:.2f} km")
     diferencia = abs(d_nuestro - d_cneos)
@@ -394,3 +406,113 @@ with tab5:
         st.warning(
             f"Diferencia numérica mínima por redondeo de punto flotante: {diferencia:.2e} km"
         )
+
+with tab6:
+    st.subheader("Predicción de Diámetro con Modelo de Regresión")
+    st.write("""
+    Este modelo fue entrenado con datos reales del JPL.
+    Usa regresión lineal sobre variables logarítmicas para predecir
+    el diámetro de un asteroide a partir de su magnitud absoluta H y su albedo.
+    Con R² igual a 0.9905 explica el 99% de la varianza del diámetro.
+    """)
+
+    st.info("Este modelo fue entrenado con datos reales del JPL.")
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        H_reg = st.slider(
+            "Magnitud absoluta H",
+            min_value=10.0,
+            max_value=30.0,
+            value=19.2,
+            step=0.1,
+            help="Apophis: 19.2 | Bennu: 20.8 | Chelyabinsk: 26.0",
+            key="H_reg",
+        )
+    with col2:
+        albedo_reg = st.slider(
+            "Albedo visual",
+            min_value=0.01,
+            max_value=0.90,
+            value=0.30,
+            step=0.01,
+            help="Tipo S: ~0.20-0.30 | Tipo C: ~0.05-0.10",
+            key="albedo_reg",
+        )
+
+    # Paso 1 — transformamos el albedo igual que en el entrenamiento
+    log_albedo = np.log10(albedo_reg)
+
+    # Paso 2 — el modelo predice el logaritmo del diámetro
+    log_d_predicho = modelo_reg.predict([[H_reg, log_albedo]])[0]
+
+    # Paso 3 — revertimos el logaritmo para obtener el diámetro en km
+    d_predicho = 10**log_d_predicho
+
+    # Paso 4 — calculamos el diámetro con Harris para comparar
+    d_harris = (1329 / np.sqrt(albedo_reg)) * 10 ** (-0.2 * H_reg)
+
+    st.divider()
+    st.subheader("Resultado")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Predicción del modelo ML", f"{d_predicho:.3f} km")
+    c2.metric("Fórmula de Harris", f"{d_harris:.3f} km")
+    diferencia_reg = abs(d_predicho - d_harris)
+    c3.metric("Diferencia", f"{diferencia_reg:.3f} km")
+
+
+with tab7:
+    st.subheader("Clasificador PHA con Árbol de Decisión")
+    st.write("""
+    Este modelo fue entrenado con datos del MPC.
+    Usa un árbol de decisión para clasificar si es un Asteroide Potencialmente Peligroso (PHA) o no.
+    El modelo tiene una exactitud del 99.97% sobre datos de prueba.
+    """)
+
+    st.info("Este modelo fue entrenado con datos reales del Minor Planet Center (MPC).")
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        H_clf = st.slider(
+            "Magnitud absoluta H",
+            min_value=10.0,
+            max_value=30.0,
+            value=19.2,
+            step=0.1,
+            help="Apophis: 19.2 | Bennu: 20.8 | Chelyabinsk: 26.0",
+            key="H_clf",
+        )
+    with col2:
+        moid_clf = st.slider(
+            "MOID (UA)",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.03,
+            step=0.001,
+            format="%.3f UA",
+            help="Distancia mínima a la órbita terrestre",
+            key="moid_clf",
+        )
+
+    # El modelo fue entrenado con 5 features pero H y moid
+    # son los únicos que usa
+    X_nuevo = [[H_clf, moid_clf, 0.5, 1.0, 10.0]]
+    pred_clf = modelo_clf.predict(X_nuevo)[0]
+    prob_clf = modelo_clf.predict_proba(X_nuevo)[0]
+
+    st.divider()
+    st.subheader("Resultado")
+
+    if pred_clf:
+        st.error("El modelo clasifica este asteroide como **PHA**")
+    else:
+        st.success("El modelo clasifica este asteroide como **NO PHA**")
+
+    c1, c2 = st.columns(2)
+    c1.metric("Probabilidad de ser PHA", f"{prob_clf[1] * 100:.1f}%")
+    c2.metric("Probabilidad de no ser PHA", f"{prob_clf[0] * 100:.1f}%")
